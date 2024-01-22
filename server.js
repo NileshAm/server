@@ -1,7 +1,11 @@
 const express = require("express");
-require("dotenv").config();
-const mysql = require("mysql");
 
+const fileUpload = require("express-fileupload");
+const firebaseUploader = require("./Utils/FirebaseUploader");
+
+const connection = require("./Utils/DatabaseConnection").connectDB();
+
+require("dotenv").config();
 const PORT = process.env.PORT;
 
 const app = express();
@@ -14,20 +18,7 @@ app.use(
   })
 );
 
-const connection = mysql.createConnection({
-  host: process.env.HOST,
-  user: process.env.USER,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
-});
-
-connection.connect((err) => {
-  if (err) {
-    console.error(`Error connecting to databses : ${err}`);
-    return;
-  }
-  console.log("Database successfully connected");
-});
+app.use(fileUpload());
 
 app.get("/in", (req, res) => {
   let array = req.query.key.replace(/\[|\]/g, "").split(",");
@@ -40,15 +31,79 @@ app.get("/product/:inqury", (req, res) => {
     connection.query("SELECT * FROM Product", (err, result) => {
       if (err) {
         console.error(`Error fetching data : ${err}`);
-        return res.status(500).json({ error: "Failed to execute query" });
+        res.status(500).json({ error: "Failed to execute query" });
+      } else {
+        res.status(200).json(result);
       }
-      res.json(result);
+    });
+  }
+  if (req.params.inqury == "banner") {
+    connection.query("SELECT * FROM Banners", (err, result) => {
+      if (err) {
+        console.error(`Error fetching data : ${err}`);
+        res.status(500).json({ error: "Failed to execute query" });
+      } else {
+        res.status(200).json(result);
+      }
     });
   }
 });
 
-app.get("/login/:user", (req, res) => {
-  res.json({ User: req.params.user });
+app.post("/api/img", (req, res) => {
+  if (req.files != null) {
+    const rating = Math.floor(Math.random() * 6);
+    file = req.files;
+    data = req.body;
+
+    connection.query(`CALL VerifyProduct('${data.name}')`, (err, result) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ result: err, code: 500 });
+      } else if (result[0][0].Products === 1) {
+        res
+          .status(208)
+          .json({ result: "Items already in Database", code: 208 });
+      } else {
+        firebaseUploader.FirebaseUpload(file.image).then((responce) => {
+          if (responce.code === 200) {
+            connection.query(
+              `CALL InsertProduct('${data.name}', '${data.description}', ${data.price}, ${data.discount}, ${rating}, ${data.quantity}, '${responce.img_url}')`,
+              (err, result) => {
+                if (err) {
+                  console.error(err);
+                  res.status(500).json({ result: err, code: 500 });
+                } else {
+                  if (result.affectedRows === 1) {
+                    res
+                      .status(201)
+                      .json({ result: "Items Succesfully created", code: 201 });
+                  } else {
+                    console.err(
+                      "error occuered while inserting  data to database"
+                    );
+                    res.status(500).json({
+                      result:
+                        "error occuered while inserting  data to database",
+                      code: 500,
+                    });
+                  }
+                }
+              }
+            );
+          } else {
+            console.err(responce.error);
+            res.status(500).json({ result: responce.error, code: 500 });
+          }
+        });
+      }
+    });
+  } else {
+    res.status(204).json({ Result: "Incomplete content sent", code: 204 });
+  }
+});
+
+app.get("/login/", (req, res) => {
+  res.status(205).json({ User: req.params.user });
 });
 
 app.listen(PORT, () => {
