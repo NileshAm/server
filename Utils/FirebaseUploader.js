@@ -23,9 +23,8 @@ try {
     storageBucket: "new-tech-ff9a5.appspot.com",
   });
   console.error("Firebase Initialized Succesfully");
-} catch (err){
-  console.error("Failed to initialize firebase\n"+err);
-
+} catch (err) {
+  console.error("Failed to initialize firebase\n" + err);
 }
 
 async function FirebaseUpload(imageData) {
@@ -49,16 +48,21 @@ async function FirebaseUpload(imageData) {
         contentType: "image/webp",
       },
     });
+    const file = bucket.file(destinationPath);
+    file.makePublic();
+
     return {
       message: "Image (WebP) uploaded successfully!",
       error: "",
       code: 200,
+      img_url: file.publicUrl(),
     };
   } catch (err) {
     return {
       message: "Error during conversion and upload:",
       error: err,
       code: 500,
+      img_url: "",
     };
   } finally {
     fs.unlinkSync(tempFilePath);
