@@ -106,6 +106,21 @@ app.get("/login/", (req, res) => {
   res.status(205).json({ User: req.params.user });
 });
 
+app.get("/test", (req, res)=>{
+  res.status(200).json({ State : "Working...", code : 200})
+})
+
+app.get("/product", async (req, res) => {
+  connection.query(`select * from Product where ID = ${req.query.id}` , (err, result)=>{
+    if(err){
+      res.status(500).json({message : {err}, code :500})
+    }else{
+      res.status(200).json(result)
+    }
+
+  })
+});
+
 app.listen(PORT, () => {
   console.log(`Lisening to port ${PORT}`);
 });
