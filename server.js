@@ -194,6 +194,19 @@ app.post("/search", (req, res) => {
     }
     query += `Brand in (${data.brands}) `;
   }
+  if (data.rating !== "") {
+    if (
+      data.price !== "" ||
+      data.term !== "" ||
+      data.categories !== "" ||
+      data.brands !== ""
+    ) {
+      query += "and ";
+    }
+    query += `Rating >= ${data.rating} `;
+  }
+  query += " limit 10 "
+  // console.log(query);
   connection.query(query, (err, result) => {
     if (err) {
       console.error("Error fetching data : " + err);
